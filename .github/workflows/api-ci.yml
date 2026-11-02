@@ -1,0 +1,27 @@
+name: API checks
+on:
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - 'apps/api/**'
+      - '.github/workflows/api-ci.yml'
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+      - run: npm ci
+      - run: npx eslint "{src,test}/**/*.ts"
+      - run: npm run build
+      - run: npm test
+      - run: npm run test:e2e
+      - run: npm audit --omit=dev --audit-level=high
