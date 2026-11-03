@@ -1,21 +1,17 @@
-function readText(value: unknown, fallback: string): string {
-  if (typeof value === 'string' && value.trim() !== '') return value.trim();
-  if (typeof value === 'number') return String(value);
-  return fallback;
-}
+import { describe, expect, it } from 'vitest';
+import { validateEnv } from './env.validation.js';
 
-export function validateEnv(config: Record<string, unknown>): Record<string, unknown> {
-  const nodeEnv = readText(config.NODE_ENV, 'development');
-  if (!['development', 'test', 'staging', 'production'].includes(nodeEnv)) {
-    throw new Error(
-      `NODE_ENV must be development, test, staging or production (got "${nodeEnv}")`,
-    );
-  }
+describe('validateEnv', () => {
+  it('accepts a valid configuration', () => {
+    const result = validateEnv({ NODE_ENV: 'development', PORT: '3000' });
+    expect(result.PORT).toBe(3000);
+  });
 
-  const port = Number(readText(config.PORT, '3000'));
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    throw new Error('PORT must be a whole number between 1 and 65535');
-  }
+  it('rejects an unknown NODE_ENV', () => {
+    expect(() => validateEnv({ NODE_ENV: 'banana' })).toThrow();
+  });
 
-  return { ...config, NODE_ENV: nodeEnv, PORT: port };
-}
+  it('rejects an invalid PORT', () => {
+    expect(() => validateEnv({ PORT: '99999' })).toThrow();
+  });
+});
