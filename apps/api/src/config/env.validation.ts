@@ -17,5 +17,11 @@ export function validateEnv(config: Record<string, unknown>): Record<string, unk
     throw new Error('PORT must be a whole number between 1 and 65535');
   }
 
-  return { ...config, NODE_ENV: nodeEnv, PORT: port };
+  // Never include the value in the message: it contains the database password.
+  const databaseUrl = readText(config.DATABASE_URL, '');
+  if (!/^postgres(ql)?:\/\//.test(databaseUrl)) {
+    throw new Error('DATABASE_URL must be set to a PostgreSQL connection string');
+  }
+
+  return { ...config, NODE_ENV: nodeEnv, PORT: port, DATABASE_URL: databaseUrl };
 }
