@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client.js';
+import { lgasByState } from '../src/taxonomy/lga.data.js';
 import {
   curricula,
   jobTypes,
@@ -89,6 +90,23 @@ async function main(): Promise<void> {
       update: { name: item.name },
       create: { code: item.code, name: item.name },
     });
+  }
+
+  const stateRows = await prisma.state.findMany();
+  const stateIdByCode = new Map(stateRows.map((state) => [state.code, state.id]));
+
+  for (const [stateCode, names] of Object.entries(lgasByState)) {
+    const stateId = stateIdByCode.get(stateCode);
+    if (stateId === undefined) {
+      throw new Error(`LGA data has unknown state code ${stateCode}`);
+    }
+    for (const name of names) {
+      await prisma.lga.upsert({
+        where: { stateId_name: { stateId, name } },
+        update: {},
+        create: { stateId, name },
+      });
+    }
   }
 
   console.log('Seeding finished.');
