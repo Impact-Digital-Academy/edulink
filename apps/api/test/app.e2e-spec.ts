@@ -25,6 +25,11 @@ describe('Health (e2e)', () => {
     expect(res.body.status).toBe('ok');
   });
 
+  it('GET /v1/health/ready confirms the database answers', async () => {
+    const res = await request(app.getHttpServer()).get('/v1/health/ready').expect(200);
+    expect(res.body.database).toBe('up');
+  });
+
   it('sends security headers', async () => {
     const res = await request(app.getHttpServer()).get('/v1/health');
     expect(res.headers['x-content-type-options']).toBe('nosniff');

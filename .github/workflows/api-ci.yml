@@ -12,6 +12,26 @@ jobs:
     defaults:
       run:
         working-directory: apps/api
+    env:
+      # Throwaway values for a disposable test run. Not real secrets.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      JWT_ACCESS_SECRET: ci-only-access-secret-0123456789-abcdefghij
+      AUTH_CODE_SECRET: ci-only-code-secret-9876543210-jihgfedcba
+      EMAIL_PROVIDER: console
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,8 +40,12 @@ jobs:
           cache: npm
           cache-dependency-path: apps/api/package-lock.json
       - run: npm ci
+      - run: npx prisma generate
+      - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
       - run: npm test
+      - run: npx prisma migrate deploy
+      - run: npx prisma db seed
       - run: npm run test:e2e
       - run: npm audit --omit=dev --audit-level=high

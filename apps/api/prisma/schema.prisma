@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model SubjectGroup {
+  id        Int       @id @default(autoincrement())
+  code      String    @unique
+  name      String
+  sortOrder Int       @default(0) @map("sort_order")
+  subjects  Subject[]
+
+  @@map("subject_groups")
+}
+
+model Subject {
+  id        Int          @id @default(autoincrement())
+  code      String       @unique
+  name      String
+  groupId   Int          @map("group_id")
+  group     SubjectGroup @relation(fields: [groupId], references: [id])
+  sortOrder Int          @default(0) @map("sort_order")
+  isActive  Boolean      @default(true) @map("is_active")
+
+  @@index([groupId])
+  @@map("subjects")
+}
+
+model Level {
+  id        Int     @id @default(autoincrement())
+  code      String  @unique
+  name      String
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  @@map("levels")
+}
+
+model Curriculum {
+  id        Int     @id @default(autoincrement())
+  code      String  @unique
+  name      String
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  @@map("curricula")
+}
+
+model Qualification {
+  id        Int     @id @default(autoincrement())
+  code      String  @unique
+  name      String
+  rank      Int
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  @@map("qualifications")
+}
+
+model JobType {
+  id        Int     @id @default(autoincrement())
+  code      String  @unique
+  name      String
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  @@map("job_types")
+}
+
+model RoleType {
+  id        Int     @id @default(autoincrement())
+  code      String  @unique
+  name      String
+  sortOrder Int     @default(0) @map("sort_order")
+  isActive  Boolean @default(true) @map("is_active")
+
+  @@map("role_types")
+}
+
+model State {
+  id   Int    @id @default(autoincrement())
+  code String @unique
+  name String @unique
+  lgas Lga[]
+
+  @@map("states")
+}
+
+model Lga {
+  id      Int    @id @default(autoincrement())
+  stateId Int    @map("state_id")
+  state   State  @relation(fields: [stateId], references: [id])
+  name    String
+
+  @@unique([stateId, name])
+  @@index([stateId])
+  @@map("lgas")
+}
+
+enum UserStatus {
+  active
+  suspended
+  deleted
+
+  @@map("user_status")
+}
+
+// One login per person. Teacher and school profiles will hang off this later,
+// so a person can hold either or both.
+model User {
+  id              String     @id @default(uuid()) @db.Uuid
+  email           String     @unique
+  emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamptz(3)
+  status          UserStatus @default(active)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastLoginAt     DateTime?  @map("last_login_at") @db.Timestamptz(3)
+
+  sessions Session[]
+  consents ConsentRecord[]
+
+  @@map("users")
+}
+
+// One-time sign-in codes. Only a keyed hash of the code is stored, never the code.
+model LoginCode {
+  id         String    @id @default(uuid()) @db.Uuid
+  email      String
+  codeHash   String    @map("code_hash")
+  attempts   Int       @default(0)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([email, createdAt])
+  @@map("login_codes")
+}
+
+// One row per signed-in device. Only a hash of the refresh token is stored.
+model Session {
+  id                String    @id @default(uuid()) @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash         String    @unique @map("token_hash")
+  previousTokenHash String?   @unique @map("previous_token_hash")
+  deviceName        String?   @map("device_name")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt        DateTime  @default(now()) @map("last_used_at") @db.Timestamptz(3)
+  expiresAt         DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt         DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// Evidence of what each person agreed to, and when (data protection law).
+model ConsentRecord {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document   String
+  version    String
+  acceptedAt DateTime @default(now()) @map("accepted_at") @db.Timestamptz(3)
+
+  @@index([userId])
+  @@map("consent_records")
+}
